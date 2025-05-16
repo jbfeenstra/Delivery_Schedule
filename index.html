@@ -1,105 +1,82 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Truck Delivery Scheduler</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    input, select, button { margin: 5px; padding: 5px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
-    th { background-color: #f2f2f2; }
-  </style>
-</head>
-<body>
+<script>
+  const timeSelect = document.getElementById('time');
+  const tableBody = document.getElementById('scheduleTable').querySelector('tbody');
 
-  <h2>Truck Delivery Scheduler</h2>
-
-  <label>Truck Company: <input type="text" id="company"></label>
-  <label>Date: <input type="date" id="date"></label>
-  <label>Time:
-    <select id="time">
-      <!-- Time slots will be populated by JS -->
-    </select>
-  </label>
-  <button onclick="scheduleDelivery()">Schedule Delivery</button>
-
-  <table id="scheduleTable">
-    <thead>
-      <tr>
-        <th>Appointment ID</th>
-        <th>Truck Company</th>
-        <th>Date</th>
-        <th>Time</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-
-  <script>
-    const timeSelect = document.getElementById('time');
-    for (let h = 0; h < 24; h++) {
-      for (let m = 0; m < 60; m += 30) {
-        const hour = h.toString().padStart(2, '0');
-        const minute = m.toString().padStart(2, '0');
-        const time = `${hour}:${minute}`;
-        const option = document.createElement('option');
-        option.value = time;
-        option.textContent = time;
-        timeSelect.appendChild(option);
-      }
+  for (let h = 0; h < 24; h++) {
+    for (let m = 0; m < 60; m += 30) {
+      const hour = h.toString().padStart(2, '0');
+      const minute = m.toString().padStart(2, '0');
+      const time = `${hour}:${minute}`;
+      const option = document.createElement('option');
+      option.value = time;
+      option.textContent = time;
+      timeSelect.appendChild(option);
     }
+  }
 
-    function generateID() {
-      return 'APT-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 5).toUpperCase();
-    }
+  function generateID() {
+    return 'APT-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 5).toUpperCase();
+  }
 
-    function scheduleDelivery() {
-      const company = document.getElementById('company').value.trim();
-      const date = document.getElementById('date').value;
-      const time = document.getElementById('time').value;
-      if (!company || !date || !time) return alert('Please fill all fields.');
+  function getAppointments() {
+    return JSON.parse(localStorage.getItem('appointments') || '[]');
+  }
 
-      const id = generateID();
-      const table = document.getElementById('scheduleTable').querySelector('tbody');
-      const row = table.insertRow();
+  function saveAppointments(appointments) {
+    localStorage.setItem('appointments', JSON.stringify(appointments));
+  }
 
+  function renderAppointments() {
+    tableBody.innerHTML = '';
+    const appointments = getAppointments().sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
+    appointments.forEach(app => {
+      const row = tableBody.insertRow();
       row.innerHTML = `
-        <td>${id}</td>
-        <td>${company}</td>
-        <td>${date}</td>
-        <td>${time}</td>
+        <td>${app.id}</td>
+        <td>${app.company}</td>
+        <td>${app.date}</td>
+        <td>${app.time}</td>
         <td>
-          <button onclick="cancelDelivery(this)">Cancel</button>
-          <button onclick="markDelivered(this)">Delivered</button>
+          <button onclick="cancelDelivery('${app.id}')">Cancel</button>
+          <button onclick="markDelivered('${app.id}')">Delivered</button>
         </td>
       `;
+    });
+  }
 
-      sortTable();
-    }
+  function scheduleDelivery() {
+    const company = document.getElementById('company').value.trim();
+    const date = document.getElementById('date').value;
+    const time = document.getElementById('time').value;
+    if (!company || !date || !time) return alert('Please fill all fields.');
 
-    function cancelDelivery(btn) {
-      const row = btn.closest('tr');
-      row.remove();
-    }
+    const appointments = getAppointments();
+    const newAppointment = {
+      id: generateID(),
+      company,
+      date,
+      time
+    };
+    appointments.push(newAppointment);
+    saveAppointments(appointments);
+    renderAppointments();
+  }
 
-    function markDelivered(btn) {
-      const row = btn.closest('tr');
-      row.remove();
-    }
+  function cancelDelivery(id) {
+    let appointments = getAppointments();
+    appointments = appointments.filter(app => app.id !== id);
+    saveAppointments(appointments);
+    renderAppointments();
+  }
 
-    function sortTable() {
-      const table = document.getElementById('scheduleTable').querySelector('tbody');
-      const rows = Array.from(table.rows);
-      rows.sort((a, b) => {
-        const dateA = new Date(`${a.cells[2].textContent}T${a.cells[3].textContent}`);
-        const dateB = new Date(`${b.cells[2].textContent}T${b.cells[3].textContent}`);
-        return dateA - dateB;
-      });
-      rows.forEach(row => table.appendChild(row));
-    }
-  </script>
+  function markDelivered(id) {
+    cancelDelivery(id); // Same as canceling, just a different action
+  }
+
+  // Load appointments on page load
+  window.onload = renderAppointments;
+</script>
+
 
 </body>
 </html>
